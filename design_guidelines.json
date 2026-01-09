@@ -1,0 +1,134 @@
+{
+  "design_system": {
+    "identity": {
+      "name": "StyleMatch",
+      "archetype": "Swiss High-Contrast",
+      "vibe": "Editorial, Sharp, Intelligent",
+      "core_philosophy": "The interface is the canvas; the clothes are the paint."
+    },
+    "typography": {
+      "font_family": {
+        "heading": "Playfair Display, serif",
+        "body": "Manrope, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "scale": {
+        "h1": "text-6xl md:text-8xl font-medium tracking-tight leading-[0.9]",
+        "h2": "text-4xl md:text-5xl font-normal tracking-tight",
+        "h3": "text-2xl md:text-3xl font-normal",
+        "body_lg": "text-lg md:text-xl font-light leading-relaxed",
+        "body_base": "text-base font-light leading-relaxed",
+        "caption": "text-xs font-mono uppercase tracking-widest text-muted-foreground"
+      },
+      "imports": [
+        "@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');"
+      ]
+    },
+    "colors": {
+      "palette": {
+        "background": "#FFFFFF",
+        "foreground": "#0A0A0A",
+        "primary": "#000000",
+        "primary_foreground": "#FFFFFF",
+        "secondary": "#F4F4F5",
+        "secondary_foreground": "#18181B",
+        "accent": "#D4FF00",
+        "accent_foreground": "#000000",
+        "muted": "#FAFAFA",
+        "muted_foreground": "#71717A",
+        "border": "#E4E4E7",
+        "input": "#E4E4E7",
+        "ring": "#0A0A0A"
+      },
+      "usage": {
+        "accent_rule": "Use Hyper-Lime (#D4FF00) ONLY for the primary 'Generate' action and AI success states. Never for backgrounds.",
+        "text_rule": "Headings are always Black (#000000). Body text is Zinc-800 (#27272a).",
+        "surface_rule": "Wardrobe items sit on #F5F5F5 (Light Grey) to stand out against the White page background."
+      }
+    },
+    "layout": {
+      "spacing": {
+        "container_padding": "px-6 md:px-12 lg:px-24",
+        "section_gap": "py-24 md:py-32",
+        "grid_gap": "gap-x-4 gap-y-12 md:gap-x-8 md:gap-y-16"
+      },
+      "grids": {
+        "wardrobe": "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8",
+        "outfit_builder": "grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-4rem)]"
+      },
+      "border_radius": {
+        "default": "rounded-none",
+        "button": "rounded-full",
+        "card": "rounded-sm"
+      }
+    },
+    "components": {
+      "buttons": {
+        "primary": "bg-black text-white hover:bg-zinc-800 rounded-full px-8 py-6 text-sm uppercase tracking-widest font-medium transition-all hover:scale-105",
+        "secondary": "bg-white text-black border border-black/10 hover:border-black rounded-full px-8 py-6 text-sm uppercase tracking-widest transition-all",
+        "accent": "bg-[#D4FF00] text-black hover:bg-[#bce600] rounded-full px-10 py-6 text-sm uppercase tracking-widest font-bold shadow-[0_0_20px_rgba(212,255,0,0.4)] hover:shadow-[0_0_30px_rgba(212,255,0,0.6)] transition-all"
+      },
+      "cards": {
+        "wardrobe_item": "group relative aspect-[3/4] bg-[#F5F5F5] overflow-hidden transition-all hover:shadow-xl",
+        "outfit_card": "bg-white border border-border p-4 hover:border-black transition-colors"
+      },
+      "inputs": {
+        "default": "border-b border-input bg-transparent px-0 py-2 text-lg focus-visible:ring-0 focus-visible:border-black rounded-none placeholder:text-muted-foreground/50"
+      }
+    },
+    "motion": {
+      "transitions": "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+      "hover_effects": "hover:-translate-y-1",
+      "page_load": "animate-in fade-in slide-in-from-bottom-4 duration-700"
+    }
+  },
+  "assets": {
+    "images": {
+      "hero": {
+        "url": "https://images.unsplash.com/photo-1619678681136-669acf3b3477?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Urban fashion model in grey pants",
+        "category": "landing_hero"
+      },
+      "placeholders": [
+        {
+          "url": "https://images.unsplash.com/photo-1666112512232-f763ceeb5ec8?crop=entropy&cs=srgb&fm=jpg&q=85",
+          "alt": "Minimalist white towel/fabric",
+          "category": "wardrobe_item"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1594734415578-00fc9540929b?crop=entropy&cs=srgb&fm=jpg&q=85",
+          "alt": "Satin fabric texture",
+          "category": "wardrobe_item"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1666358067414-c77508c771b2?crop=entropy&cs=srgb&fm=jpg&q=85",
+          "alt": "White shirt collar",
+          "category": "wardrobe_item"
+        }
+      ]
+    },
+    "icons": "Use 'lucide-react' with stroke-width={1.5} for a refined look."
+  },
+  "instructions_to_main_agent": {
+    "setup": [
+      "Install fonts: Add the Google Fonts import to index.css immediately.",
+      "Configure Tailwind: Update tailwind.config.js with the specific colors (accent: #D4FF00) and font families.",
+      "Clean up: Remove all default React logos and App.css styles. Reset to a blank canvas."
+    ],
+    "implementation_rules": [
+      "DO NOT use standard Shadcn cards for the wardrobe grid. Use a custom 'Polaroid' style layout: Image on top (no padding), text below.",
+      "The 'Generate Outfit' button must be the most visible element on the screen when active.",
+      "Use the 'Masonry' layout pattern for the wardrobe gallery if possible, or a strict grid with varied aspect ratios.",
+      "Ensure the 'Upload' area feels like a premium dropzone (dashed border, minimal text, generous padding).",
+      "For the AI suggestions, use a 'Flash' animation effect when results appear."
+    ],
+    "universal_guidelines": [
+      "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+      "Don't make generic centered layouts. Use asymmetry.",
+      "Create depth through layered design elements with z-index hierarchy.",
+      "Every interaction needs micro-animations.",
+      "Use 2-3x more spacing than feels comfortable.",
+      "All interactive elements MUST include data-testid attributes."
+    ]
+  }
+}
