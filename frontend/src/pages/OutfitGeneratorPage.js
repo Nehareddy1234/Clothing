@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Wand2, Loader2, Check, Save } from "lucide-react";
+import { Wand2, Loader2, Check, Save, Sparkles } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
@@ -29,7 +29,8 @@ const OutfitGeneratorPage = () => {
   const [suggestion, setSuggestion] = useState(null);
   const [saving, setSaving] = useState(false);
   const [outfitName, setOutfitName] = useState("");
-  
+  const [smartMatching, setSmartMatching] = useState(false);
+
   useEffect(() => {
     fetchClothes();
   }, []);
@@ -80,12 +81,37 @@ const OutfitGeneratorPage = () => {
     }
   };
   
+  const smartMatch = async () => {
+    if (!selectedOccasion) {
+      toast.error("Please select an occasion first");
+      return;
+    }
+
+    try {
+      setSmartMatching(true);
+      const response = await axios.get(`${API}/outfits/smart-match/${encodeURIComponent(selectedOccasion)}`);
+
+      setSuggestion({
+        suggestion: response.data.suggestions,
+        occasion: selectedOccasion,
+        wardrobe_size: response.data.wardrobe_size
+      });
+
+      toast.success("Smart outfit suggestions generated!");
+    } catch (error) {
+      console.error("Error in smart match:", error);
+      toast.error("Failed to generate smart suggestions");
+    } finally {
+      setSmartMatching(false);
+    }
+  };
+
   const saveOutfit = async () => {
     if (!outfitName.trim()) {
       toast.error("Please enter an outfit name");
       return;
     }
-    
+
     try {
       setSaving(true);
       await axios.post(`${API}/outfits/save`, {
@@ -94,7 +120,7 @@ const OutfitGeneratorPage = () => {
         clothing_ids: selectedItems,
         ai_suggestion: suggestion.suggestion,
       });
-      
+
       toast.success("Outfit saved!");
       setOutfitName("");
       setTimeout(() => navigate("/saved"), 1000);
@@ -173,7 +199,7 @@ const OutfitGeneratorPage = () => {
                       }`}
                     >
                       <img
-                        src={`data:image/jpeg;base64,${item.image_base64}`}
+                        src={`data:image/jpeg;base64,${item.cleaned_image_base64 || item.image_base64}`}
                         alt={item.description}
                         className="w-full h-full object-cover"
                       />
@@ -189,8 +215,36 @@ const OutfitGeneratorPage = () => {
               )}
             </div>
             
-            {/* Generate Button */}
-            <div>
+            {/* Generate Buttons */}
+            <div className="space-y-4">
+              <Button
+                onClick={smartMatch}
+                disabled={smartMatching || !selectedOccasion}
+                data-testid="smart-match-btn"
+                className="w-full bg-black text-white hover:bg-zinc-800 rounded-full px-10 py-8 text-base uppercase tracking-widest font-bold transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {smartMatching ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-3 animate-spin" strokeWidth={1.5} />
+                    Matching...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 mr-3" strokeWidth={1.5} />
+                    Smart Match from Wardrobe
+                  </>
+                )}
+              </Button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border"></span>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+
               <Button
                 onClick={generateOutfit}
                 disabled={generating || selectedItems.length === 0 || !selectedOccasion}
@@ -205,7 +259,7 @@ const OutfitGeneratorPage = () => {
                 ) : (
                   <>
                     <Wand2 className="w-5 h-5 mr-3" strokeWidth={1.5} />
-                    Generate Outfit
+                    Generate with Selected
                   </>
                 )}
               </Button>

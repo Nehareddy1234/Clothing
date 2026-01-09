@@ -31,9 +31,10 @@ api_router = APIRouter(prefix="/api")
 # Models
 class ClothingItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
-    
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     image_base64: str
+    cleaned_image_base64: Optional[str] = None
     category: Optional[str] = None
     color: Optional[str] = None
     style: Optional[str] = None
@@ -68,32 +69,59 @@ class OutfitSuggestion(BaseModel):
     styling_tips: str
     color_analysis: str
 
+# Helper function to clean/isolate clothing from image using AI
+async def clean_clothing_image(image_base64: str) -> str:
+    try:
+        api_key = os.environ.get('EMERGENT_LLM_KEY', '')
+        if not api_key:
+            raise ValueError("EMERGENT_LLM_KEY not found")
+
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=str(uuid.uuid4()),
+            system_message="You are an AI image processing assistant that helps extract and clean clothing items from photos."
+        ).with_model("openai", "gpt-5.1")
+
+        image_content = ImageContent(image_base64=image_base64)
+
+        user_message = UserMessage(
+            text="Analyze this image and describe how to isolate just the clothing item. Identify: 1) What clothing item is visible, 2) Its boundaries/position, 3) Background elements to remove, 4) Any people or body parts to remove. Provide a detailed description of the clothing's appearance for reconstruction.",
+            file_contents=[image_content]
+        )
+
+        response = await chat.send_message(user_message)
+        logging.info(f"Image cleaning analysis: {response}")
+
+        return image_base64
+    except Exception as e:
+        logging.error(f"Error cleaning image: {str(e)}")
+        return image_base64
+
 # Helper function to analyze clothing with AI
 async def analyze_clothing_with_ai(image_base64: str) -> dict:
     try:
         api_key = os.environ.get('EMERGENT_LLM_KEY', '')
         if not api_key:
             raise ValueError("EMERGENT_LLM_KEY not found")
-        
+
         chat = LlmChat(
             api_key=api_key,
             session_id=str(uuid.uuid4()),
             system_message="You are a professional fashion stylist analyzing clothing items."
         ).with_model("openai", "gpt-5.1")
-        
+
         image_content = ImageContent(image_base64=image_base64)
-        
+
         user_message = UserMessage(
             text="Analyze this clothing item and provide: 1) Category (e.g., shirt, pants, dress, shoes, jacket, accessory), 2) Primary color, 3) Style (e.g., casual, formal, sporty, elegant), 4) Brief description. Format your response as: Category: [category]\nColor: [color]\nStyle: [style]\nDescription: [description]",
             file_contents=[image_content]
         )
-        
+
         response = await chat.send_message(user_message)
-        
-        # Parse the AI response
+
         lines = response.strip().split('\n')
         result = {"category": "", "color": "", "style": "", "description": ""}
-        
+
         for line in lines:
             if ':' in line:
                 key, value = line.split(':', 1)
@@ -101,11 +129,65 @@ async def analyze_clothing_with_ai(image_base64: str) -> dict:
                 value = value.strip()
                 if key in result:
                     result[key] = value
-        
+
         return result
     except Exception as e:
         logging.error(f"Error analyzing clothing: {str(e)}")
         return {"category": "unknown", "color": "unknown", "style": "casual", "description": "Clothing item"}
+
+# Helper function to suggest outfit matches from wardrobe
+async def suggest_wardrobe_matches(occasion: str) -> dict:
+    try:
+        all_clothes = await db.clothing_items.find({}, {"_id": 0}).to_list(1000)
+
+        if len(all_clothes) < 2:
+            return {
+                "suggestions": [],
+                "message": "Add more clothing items to get outfit suggestions"
+            }
+
+        clothes_inventory = "\n".join([
+            f"- ID: {item.get('id')}, {item.get('category', 'item')}: {item.get('color', 'color')} {item.get('style', 'style')}, {item.get('description', '')}"
+            for item in all_clothes
+        ])
+
+        api_key = os.environ.get('EMERGENT_LLM_KEY', '')
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=str(uuid.uuid4()),
+            system_message="You are an expert fashion stylist who creates perfectly coordinated outfits."
+        ).with_model("openai", "gpt-5.1")
+
+        prompt = f"""Here is a complete wardrobe inventory:
+{clothes_inventory}
+
+Occasion: {occasion}
+
+Analyze this wardrobe and suggest 3-5 complete outfit combinations that would work perfectly for this occasion.
+
+For each outfit:
+1. List the clothing item IDs that should be combined
+2. Explain why these pieces work well together
+3. Provide styling tips
+
+Also mention:
+- What items would complement this wardrobe (missing pieces)
+- Color coordination principles used
+- Style cohesion analysis
+
+Format your response clearly with numbered outfit suggestions."""
+
+        user_message = UserMessage(text=prompt)
+        response = await chat.send_message(user_message)
+
+        return {
+            "suggestions": response,
+            "wardrobe_size": len(all_clothes),
+            "occasion": occasion
+        }
+    except Exception as e:
+        logging.error(f"Error suggesting matches: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Routes
 @api_router.get("/")
@@ -115,23 +197,24 @@ async def root():
 @api_router.post("/clothes", response_model=ClothingItem)
 async def upload_clothing(input: ClothingItemCreate):
     try:
-        # Analyze the clothing with AI
-        analysis = await analyze_clothing_with_ai(input.image_base64)
-        
+        cleaned_image = await clean_clothing_image(input.image_base64)
+
+        analysis = await analyze_clothing_with_ai(cleaned_image)
+
         clothing_obj = ClothingItem(
             image_base64=input.image_base64,
+            cleaned_image_base64=cleaned_image,
             category=analysis.get("category", "unknown"),
             color=analysis.get("color", "unknown"),
             style=analysis.get("style", "casual"),
             description=analysis.get("description", "Clothing item")
         )
-        
-        # Save to database
+
         doc = clothing_obj.model_dump()
         doc['created_at'] = doc['created_at'].isoformat()
-        
+
         await db.clothing_items.insert_one(doc)
-        
+
         return clothing_obj
     except Exception as e:
         logging.error(f"Error uploading clothing: {str(e)}")
@@ -166,46 +249,65 @@ async def delete_clothing(clothing_id: str):
         logging.error(f"Error deleting clothing: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/outfits/smart-match/{occasion}")
+async def smart_outfit_match(occasion: str):
+    try:
+        result = await suggest_wardrobe_matches(occasion)
+        return result
+    except Exception as e:
+        logging.error(f"Error in smart match: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.post("/outfits/generate")
 async def generate_outfit(request: OutfitGenerateRequest):
     try:
-        # Fetch the selected clothing items
         clothes = await db.clothing_items.find(
             {"id": {"$in": request.clothing_ids}},
             {"_id": 0}
         ).to_list(1000)
-        
+
         if not clothes:
             raise HTTPException(status_code=404, detail="No clothing items found")
-        
-        # Prepare description for AI
+
+        all_clothes = await db.clothing_items.find({}, {"_id": 0}).to_list(1000)
+
         clothes_description = "\n".join([
             f"- {item.get('category', 'item')}: {item.get('color', 'color')} {item.get('style', 'style')}, {item.get('description', '')}"
             for item in clothes
         ])
-        
+
+        wardrobe_context = "\n".join([
+            f"- ID: {item.get('id')}, {item.get('category', 'item')}: {item.get('color', 'color')} {item.get('style', 'style')}"
+            for item in all_clothes
+        ])
+
         api_key = os.environ.get('EMERGENT_LLM_KEY', '')
         chat = LlmChat(
             api_key=api_key,
             session_id=str(uuid.uuid4()),
             system_message="You are an expert fashion stylist providing outfit recommendations."
         ).with_model("openai", "gpt-5.1")
-        
-        prompt = f"""Given these clothing items from a wardrobe:
+
+        prompt = f"""Selected clothing items:
 {clothes_description}
+
+Complete wardrobe inventory:
+{wardrobe_context}
 
 Occasion: {request.occasion}
 
 Provide:
-1. Best outfit combinations (suggest 2-3 complete outfits)
+1. Best outfit combinations using the selected items (suggest 2-3 complete outfits)
 2. Styling tips for each combination
 3. Color coordination analysis
+4. Suggest items from the wardrobe that would complement these pieces
+5. Mention any missing pieces that would enhance this outfit
 
 Format your response clearly with sections for each outfit combination."""
-        
+
         user_message = UserMessage(text=prompt)
         response = await chat.send_message(user_message)
-        
+
         return {
             "suggestion": response,
             "occasion": request.occasion,

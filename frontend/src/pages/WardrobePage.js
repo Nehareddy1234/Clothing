@@ -104,14 +104,14 @@ const WardrobePage = () => {
               {uploading ? (
                 <>
                   <Loader2 className="w-12 h-12 animate-spin text-black" strokeWidth={1.5} />
-                  <p className="text-sm uppercase tracking-widest font-medium">Analyzing...</p>
+                  <p className="text-sm uppercase tracking-widest font-medium">Processing & Cleaning Images...</p>
                 </>
               ) : (
                 <>
                   <Upload className="w-12 h-12 text-black transition-transform duration-500 group-hover:scale-110" strokeWidth={1.5} />
                   <div className="text-center">
                     <p className="text-sm uppercase tracking-widest font-medium mb-1">Drop files here or click to upload</p>
-                    <p className="text-xs text-muted-foreground">AI will analyze and categorize your clothing</p>
+                    <p className="text-xs text-muted-foreground">AI will remove backgrounds and categorize your clothing</p>
                   </div>
                 </>
               )}
@@ -137,7 +137,7 @@ const WardrobePage = () => {
                 data-testid={`clothing-item-${item.id}`}
               >
                 <img
-                  src={`data:image/jpeg;base64,${item.image_base64}`}
+                  src={`data:image/jpeg;base64,${item.cleaned_image_base64 || item.image_base64}`}
                   alt={item.description}
                   className="w-full h-full object-cover"
                 />

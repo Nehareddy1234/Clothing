@@ -71,17 +71,17 @@ const HomePage = () => {
               </div>
               <h3 className="text-2xl md:text-3xl font-serif font-normal">Upload</h3>
               <p className="text-base font-light leading-relaxed text-zinc-800">
-                Add photos of your clothing items. Our AI automatically categorizes and analyzes each piece.
+                Upload any clothing photo. AI automatically removes backgrounds, isolates the garment, and categorizes each piece perfectly.
               </p>
             </div>
-            
+
             <div className="space-y-4 text-center" data-testid="feature-generate">
               <div className="w-16 h-16 mx-auto bg-[#D4FF00] rounded-full flex items-center justify-center">
                 <Sparkles className="w-8 h-8 text-black" strokeWidth={1.5} />
               </div>
-              <h3 className="text-2xl md:text-3xl font-serif font-normal">Generate</h3>
+              <h3 className="text-2xl md:text-3xl font-serif font-normal">Smart Match</h3>
               <p className="text-base font-light leading-relaxed text-zinc-800">
-                Choose an occasion. AI creates perfect outfit combinations with styling tips and color analysis.
+                AI analyzes your entire wardrobe to suggest perfectly coordinated outfits. Get color analysis, styling tips, and recommendations for missing pieces.
               </p>
             </div>
             
