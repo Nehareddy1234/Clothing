@@ -69,33 +69,6 @@ class OutfitSuggestion(BaseModel):
     styling_tips: str
     color_analysis: str
 
-# Helper function to clean/isolate clothing from image using AI
-async def clean_clothing_image(image_base64: str) -> str:
-    try:
-        api_key = os.environ.get('EMERGENT_LLM_KEY', '')
-        if not api_key:
-            raise ValueError("EMERGENT_LLM_KEY not found")
-
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=str(uuid.uuid4()),
-            system_message="You are an AI image processing assistant that helps extract and clean clothing items from photos."
-        ).with_model("openai", "gpt-5.1")
-
-        image_content = ImageContent(image_base64=image_base64)
-
-        user_message = UserMessage(
-            text="Analyze this image and describe how to isolate just the clothing item. Identify: 1) What clothing item is visible, 2) Its boundaries/position, 3) Background elements to remove, 4) Any people or body parts to remove. Provide a detailed description of the clothing's appearance for reconstruction.",
-            file_contents=[image_content]
-        )
-
-        response = await chat.send_message(user_message)
-        logging.info(f"Image cleaning analysis: {response}")
-
-        return image_base64
-    except Exception as e:
-        logging.error(f"Error cleaning image: {str(e)}")
-        return image_base64
 
 # Helper function to analyze clothing with AI
 async def analyze_clothing_with_ai(image_base64: str) -> dict:
@@ -197,13 +170,11 @@ async def root():
 @api_router.post("/clothes", response_model=ClothingItem)
 async def upload_clothing(input: ClothingItemCreate):
     try:
-        cleaned_image = await clean_clothing_image(input.image_base64)
-
-        analysis = await analyze_clothing_with_ai(cleaned_image)
+        analysis = await analyze_clothing_with_ai(input.image_base64)
 
         clothing_obj = ClothingItem(
             image_base64=input.image_base64,
-            cleaned_image_base64=cleaned_image,
+            cleaned_image_base64=input.image_base64,
             category=analysis.get("category", "unknown"),
             color=analysis.get("color", "unknown"),
             style=analysis.get("style", "casual"),
